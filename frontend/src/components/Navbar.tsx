@@ -19,8 +19,8 @@ const Navbar = () => {
   const profileImageUrl = user?.profileImageUrl;
 
   const handleLogoutClick = () => {
-    setOpen(false); // Close the dropdown menu
-    setShowLogoutConfirm(true); // Show confirmation dialog
+    setOpen(false); 
+    setShowLogoutConfirm(true);
   };
 
   const handleLogoutConfirm = async () => {
@@ -52,7 +52,6 @@ const Navbar = () => {
     <nav className="sticky top-0 z-40 bg-white shadow-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center h-14 sm:h-16">
-          {/* Left side - Brand (camera icon + text) */}
           <button
             onClick={() => navigate("/home")}
             className="flex items-center gap-1 focus:outline-none"
@@ -63,7 +62,6 @@ const Navbar = () => {
             <h1 className="text-lg sm:text-2xl font-bold text-gray-800 leading-tight">ImageApp</h1>
           </button>
 
-          {/* Right side - User dropdown */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setOpen((o) => !o)}
@@ -90,7 +88,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Logout Confirmation Dialog */}
       <ConfirmDialog
         open={showLogoutConfirm}
         onConfirm={handleLogoutConfirm}

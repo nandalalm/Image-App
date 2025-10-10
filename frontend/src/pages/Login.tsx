@@ -1,18 +1,22 @@
 import { useAppDispatch, useAppSelector } from "../redux/store";
 import { loginUser } from "../redux/authSlice";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loginSchema } from "../validation/loginSchema";
 import { validateForm } from "../utils/validateForm";
-import { Link } from "react-router-dom";
-import { z } from "zod";
-import axiosInstance from "../api/axiosInstance";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "../components/ToastProvider";
+import { AuthApi } from "../services";
+import type { LoginCredentials } from "../types/auth";
+import { z } from "zod";
 
 const Login = () => {
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.auth);
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const navigate = useNavigate();
+  const { loading, error, accessToken } = useAppSelector((state) => state.auth);
+  const [formData, setFormData] = useState<LoginCredentials>({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { show } = useToast();
   const [mode, setMode] = useState<"login" | "forgot">("login");
   const [forgotEmail, setForgotEmail] = useState("");
@@ -20,6 +24,12 @@ const Login = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
 
   const forgotSchema = z.object({ email: z.string().trim().email("Invalid email format") });
+
+  useEffect(() => {
+    if (accessToken && !loading && !error) {
+      navigate('/');
+    }
+  }, [accessToken, loading, error, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,16 +64,24 @@ const Login = () => {
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
         </div>
 
-        <div>
+        <div className="relative">
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             name="password"
             placeholder="Password"
-            className={`border w-full p-2 rounded ${
+            value={formData.password}
+            className={`border w-full p-2 pr-10 rounded ${
               errors.password ? "border-red-500" : "border-gray-300"
             }`}
             onChange={handleChange}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
           {errors.password && (
             <p className="text-red-500 text-xs mt-1">{errors.password}</p>
           )}
@@ -101,7 +119,7 @@ const Login = () => {
             }
             try {
               setForgotLoading(true);
-              await axiosInstance.post("/auth/forgot-password", { email: parsed.data.email });
+              await AuthApi.forgotPassword({ email: parsed.data.email });
               show("Reset link sent to your email", "success");
             } catch (err: any) {
               const errorMessage = err.response?.data?.message || "Failed to send reset link";

@@ -4,10 +4,9 @@ import { refreshAccessToken } from "../redux/authSlice";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // important to send http-only cookie
+  withCredentials: true, 
 });
 
-// 🔑 Request interceptor to attach access token
 axiosInstance.interceptors.request.use(
   (config) => {
     const state = store.getState();
@@ -22,28 +21,27 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🧠 Interceptor for expired access tokens
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Don't retry if it's the refresh-token endpoint itself
     if (originalRequest.url?.includes('/auth/refresh-token')) {
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Ask Redux slice to get new access token
         const newAccessToken = await store.dispatch(refreshAccessToken()).unwrap();
 
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error("Refresh token expired or invalid:", refreshError);
+        store.dispatch({ type: 'auth/logout' });
+        window.location.href = '/login';
+        
         return Promise.reject(refreshError);
       }
     }

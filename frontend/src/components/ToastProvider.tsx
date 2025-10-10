@@ -26,7 +26,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Toast container */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2">
         {toasts.map((t) => (
           <div

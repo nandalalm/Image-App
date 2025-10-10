@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import axiosInstance from "../api/axiosInstance";
+import { AuthApi } from "../services";
 import { useToast } from "../components/ToastProvider";
 
-// Strong password validation schema
 const schema = z
   .object({
     password: z
@@ -51,9 +50,10 @@ const ResetPassword = () => {
 
     try {
       setLoading(true);
-      await axiosInstance.post("/auth/reset-password", {
+      await AuthApi.resetPassword({
         token,
         password: form.password,
+        confirmPassword: form.confirmPassword,
       });
       show("Password updated. You can now log in.", "success");
       navigate("/login");

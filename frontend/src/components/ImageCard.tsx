@@ -11,7 +11,7 @@ interface ImageCardProps {
   onDrop: (e: React.DragEvent) => void;
   dragged: boolean;
   draggedOver: boolean;
-  actions: React.ReactNode; // edit/delete controls
+  actions: React.ReactNode; 
   onTouchStart?: (e: React.TouchEvent) => void;
   onTouchMove?: (e: React.TouchEvent) => void;
   onTouchEnd?: (e: React.TouchEvent) => void;

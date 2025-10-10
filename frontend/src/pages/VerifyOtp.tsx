@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import axiosInstance from "../api/axiosInstance";
+import { AuthApi } from "../services";
 import { useToast } from "../components/ToastProvider";
 
 export default function VerifyOtp() {
@@ -18,7 +18,6 @@ export default function VerifyOtp() {
   
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Timer effect
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -28,7 +27,6 @@ export default function VerifyOtp() {
     }
   }, [timeLeft]);
 
-  // Redirect if no email
   useEffect(() => {
     if (!email) {
       navigate("/register");
@@ -37,7 +35,6 @@ export default function VerifyOtp() {
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
-      // Handle paste
       const pastedData = value.slice(0, 6);
       const newOtp = [...otp];
       for (let i = 0; i < pastedData.length && i < 6; i++) {
@@ -45,19 +42,17 @@ export default function VerifyOtp() {
       }
       setOtp(newOtp);
       
-      // Focus on the last filled input or next empty one
       const nextIndex = Math.min(pastedData.length, 5);
       inputRefs.current[nextIndex]?.focus();
       return;
     }
 
-    if (!/^\d*$/.test(value)) return; // Only allow digits
+    if (!/^\d*$/.test(value)) return; 
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -87,7 +82,7 @@ export default function VerifyOtp() {
     setError(null);
 
     try {
-      await axiosInstance.post("/auth/verify-otp", { 
+      await AuthApi.verifyOtp({ 
         email, 
         otp: otpString 
       });
@@ -106,7 +101,7 @@ export default function VerifyOtp() {
     setError(null);
     
     try {
-      await axiosInstance.post("/auth/resend-otp", { email });
+      await AuthApi.resendOtp(email);
       setTimeLeft(30);
       setCanResend(false);
       setOtp(["", "", "", "", "", ""]);
@@ -157,7 +152,6 @@ export default function VerifyOtp() {
               </div>
             </div>
 
-            {/* Timer */}
             <div className="text-center">
               {timeLeft > 0 ? (
                 <p className="text-xs text-gray-500">
@@ -170,14 +164,12 @@ export default function VerifyOtp() {
               )}
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-2">
                 <p className="text-red-700 text-xs text-center">{error}</p>
               </div>
             )}
 
-            {/* Verify Button */}
             <button
               type="submit"
               disabled={loading || timeLeft === 0}
@@ -187,7 +179,6 @@ export default function VerifyOtp() {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="text-center mt-4 space-y-3">
             {canResend ? (
               <button

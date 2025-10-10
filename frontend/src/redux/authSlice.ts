@@ -16,7 +16,6 @@ const initialState: AuthState = {
   user: null,
 };
 
-// ✅ Login user
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
@@ -30,7 +29,6 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// ✅ Silent refresh token
 export const refreshAccessToken = createAsyncThunk(
   "auth/refreshAccessToken",
   async (_, { rejectWithValue }) => {
@@ -44,7 +42,6 @@ export const refreshAccessToken = createAsyncThunk(
   }
 );
 
-// ✅ Logout user
 export const logoutUser = createAsyncThunk(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
@@ -58,7 +55,6 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
-// ✅ Fetch profile
 export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
   async (_, { rejectWithValue }) => {
@@ -89,7 +85,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Login cases
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -103,7 +98,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Refresh token cases
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.accessToken = action.payload;
       })
@@ -111,13 +105,11 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.user = null;
       })
-      // Logout cases
       .addCase(logoutUser.fulfilled, (state) => {
         state.accessToken = null;
         state.user = null;
         state.error = null;
       })
-      // Fetch profile cases
       .addCase(fetchProfile.pending, (state) => {
         state.loading = true;
         state.error = null;

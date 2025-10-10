@@ -1,4 +1,3 @@
-// Backend upload utility - sends files to backend for S3 processing
 import axiosInstance from "../api/axiosInstance";
 
 export interface UploadResult {
@@ -11,16 +10,12 @@ export const uploadToBackend = async (files: { file: File; title: string }[]): P
   try {
     const formData = new FormData();
     
-    // Add files to FormData
     files.forEach(({ file }) => {
       formData.append('images', file);
     });
     
-    // Add titles as array
     const titles = files.map(({ title }) => title);
-    titles.forEach((title) => {
-      formData.append('titles', title);
-    });
+    formData.append('titles', JSON.stringify(titles));
 
     const response = await axiosInstance.post('/images/upload-files', formData, {
       headers: {

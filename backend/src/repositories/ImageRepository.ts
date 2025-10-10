@@ -7,24 +7,16 @@ export class ImageRepository extends BaseRepository<IImage> implements IImageRep
     super(ImageModel);
   }
 
-  async findById(id: string): Promise<IImage | null> {
-    return this.model.findById(id);
-  }
-
-  async find(filter: object = {}): Promise<IImage[]> {
-    return this.model.find(filter);
-  }
-
-  async update(id: string, data: Partial<IImage>): Promise<IImage | null> {
-    return this.model.findByIdAndUpdate(id, data, { new: true });
-  }
-
-  async delete(id: string): Promise<void> {
-    await this.model.findByIdAndDelete(id);
-  }
-
   async findByUserId(userId: string): Promise<IImage[]> {
     return this.model.find({ userId }).sort({ order: 1, createdAt: -1 });
+  }
+
+  async findByUserIdPaginated(userId: string, limit: number, skip: number): Promise<IImage[]> {
+    return this.model.find({ userId }).sort({ order: 1, createdAt: -1 }).limit(limit).skip(skip);
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.model.countDocuments({ userId });
   }
 
   async findByUserIdAndId(userId: string, imageId: string): Promise<IImage | null> {

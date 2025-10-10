@@ -7,17 +7,16 @@ import {
   getUserImages,
   updateImage,
   deleteImage,
+  deleteAllImages,
   reorderImages
 } from "../controllers/imageController";
 
-// Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024,
   },
   fileFilter: (_, file, cb) => {
-    // Only allow image files
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -33,6 +32,7 @@ router.post("/create-from-urls", authMiddleware, createImages);
 router.get("/my-images", authMiddleware, getUserImages);
 router.put("/update/:imageId", authMiddleware, upload.single('image'), updateImage);
 router.delete("/delete/:imageId", authMiddleware, deleteImage);
+router.delete("/delete-all", authMiddleware, deleteAllImages);
 router.patch("/reorder-images", authMiddleware, reorderImages);
 
 export default router;

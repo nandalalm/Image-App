@@ -8,23 +8,15 @@ export class UserRepository extends BaseRepository<IUser> implements IUserReposi
   }
 
   async findByEmail(email: string): Promise<IUser | null> {
-    return this.model.findOne({ email });
+    return this.findOne({ email });
   }
 
   async createUser(user: IUser): Promise<IUser> {
-    return this.model.create(user);
-  }
-
-  async findById(id: string): Promise<IUser | null> {
-    return this.model.findById(id);
+    return this.create(user);
   }
 
   async updateProfileImageUrl(id: string, url: string): Promise<IUser | null> {
-    return this.model.findByIdAndUpdate(
-      id,
-      { $set: { profileImageUrl: url } },
-      { new: true }
-    );
+    return this.update(id, { $set: { profileImageUrl: url } });
   }
 
   async updatePasswordByEmail(email: string, passwordHash: string): Promise<void> {

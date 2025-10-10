@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Edit, Trash2, Save, X } from "lucide-react";
+import { Edit, Trash2, Save, X, Loader2 } from "lucide-react";
 import ImageCard from "./ImageCard";
 import ImageModal from "./ImageModal";
+import { imageTitleSchema } from "../validation/imageTitleSchema";
 
 export interface ImageItem {
   id: string;
@@ -13,31 +14,35 @@ export interface ImageItem {
 
 interface ImageGalleryProps {
   images: ImageItem[];
+  totalImages: number;
   onEdit: (id: string, title: string, file?: File) => void;
   onDelete: (id: string) => void;
+  onDeleteAll: () => void;
   onReorder: (images: ImageItem[]) => void;
   isLoading: boolean;
 }
 
-const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageGalleryProps) => {
+const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onReorder, isLoading }: ImageGalleryProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editFileError, setEditFileError] = useState<string>("");
+  const [editTitleError, setEditTitleError] = useState<string>("");
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
   const [draggedItem, setDraggedItem] = useState<ImageItem | null>(null);
   const [draggedOver, setDraggedOver] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalImage, setModalImage] = useState<ImageItem | null>(null);
-  // Touch drag UI state
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchPos, setTouchPos] = useState<{ x: number; y: number } | null>(null);
-  // Reorder mode toggle
   const [reorderMode, setReorderMode] = useState(false);
 
   const startEdit = (image: ImageItem) => {
     setEditingId(image.id);
     setEditTitle(image.title);
     setEditFile(null);
+    setEditTitleError("");
   };
 
   const cancelEdit = () => {
@@ -45,12 +50,35 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
     setEditTitle("");
     setEditFile(null);
     setEditFileError("");
+    setEditTitleError("");
   };
 
-  const saveEdit = () => {
+  const validateTitle = (title: string) => {
+    const validation = imageTitleSchema.safeParse({ title });
+    const error = validation.success ? "" : validation.error.issues[0]?.message || "";
+    setEditTitleError(error);
+    return validation.success;
+  };
+  const handleTitleChange = (title: string) => {
+    setEditTitle(title);
+    validateTitle(title);
+  };
+
+  const handleSave = async () => {
     if (editingId) {
-      onEdit(editingId, editTitle, editFile || undefined);
-      cancelEdit();
+      if (!validateTitle(editTitle)) {
+        return; 
+      }
+      
+      setIsEditing(true);
+      try {
+        await onEdit(editingId, editTitle.trim(), editFile || undefined);
+        cancelEdit();
+      } catch (error) {
+        console.error('Edit failed:', error);
+      } finally {
+        setIsEditing(false);
+      }
     }
   };
 
@@ -59,17 +87,25 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
     if (!file) {
       setEditFile(null);
       setEditFileError("");
+      setIsProcessingFile(false);
       return;
     }
+    
+    setIsProcessingFile(true);
+    
     if (!file.type.startsWith("image/")) {
       setEditFile(null);
       setEditFileError("Only image files are allowed (JPG, PNG, GIF, WebP)");
-      // reset input value so user can re-select
       e.currentTarget.value = "";
+      setIsProcessingFile(false);
       return;
     }
-    setEditFileError("");
-    setEditFile(file);
+    
+    setTimeout(() => {
+      setEditFileError("");
+      setEditFile(file);
+      setIsProcessingFile(false);
+    }, 300);
   };
 
   const handleDragStart = (e: React.DragEvent, image: ImageItem) => {
@@ -100,11 +136,9 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
     const draggedIndex = newImages.findIndex(img => img.id === draggedItem.id);
     const targetIndex = newImages.findIndex(img => img.id === targetImage.id);
 
-    // Remove dragged item and insert at target position
     const [removed] = newImages.splice(draggedIndex, 1);
     newImages.splice(targetIndex, 0, removed);
 
-    // Update order values
     const reorderedImages = newImages.map((img, index) => ({
       ...img,
       order: index
@@ -115,12 +149,11 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
   };
 
   const openModal = (image: ImageItem) => {
-    if (reorderMode) return; // disable preview during reorder
+    if (reorderMode) return; 
     setModalImage(image);
     setModalOpen(true);
   };
 
-  // Touch drag support for mobile/tablet
   const handleTouchStartFactory = (image: ImageItem) => (e: React.TouchEvent) => {
     if (!reorderMode) return;
     const t = e.touches[0];
@@ -128,21 +161,18 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
     setDraggedOver(image.id);
     setIsTouchDragging(true);
     if (t) setTouchPos({ x: t.clientX, y: t.clientY });
-    // lock body scroll while dragging
     document.body.style.overflow = 'hidden';
   };
 
   const handleTouchMove: React.TouchEventHandler = (e) => {
     if (!reorderMode) return;
-    // Prevent scroll while dragging
     if (e.cancelable) e.preventDefault();
     const touch = e.touches[0];
     if (!touch) return;
     setTouchPos({ x: touch.clientX, y: touch.clientY });
 
-    // Edge auto-scroll when finger near top/bottom of viewport
-    const EDGE_THRESHOLD = 60; // px
-    const SCROLL_STEP = 24; // px per event
+    const EDGE_THRESHOLD = 60; 
+    const SCROLL_STEP = 24; 
     if (touch.clientY < EDGE_THRESHOLD) {
       window.scrollBy({ top: -SCROLL_STEP, behavior: 'auto' });
     } else if (touch.clientY > window.innerHeight - EDGE_THRESHOLD) {
@@ -216,28 +246,68 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
 
   return (
     <div className={`bg-white rounded-2xl shadow-md p-6 ${isTouchDragging ? 'touch-none' : ''}`}>
-      <div className="flex justify-between items-center mb-5">
-        <h2 className="text-xl font-semibold">Your Images ({images.length})</h2>
-        <div className="flex items-center gap-3">
-          <p className="hidden sm:block text-sm text-gray-500">{reorderMode ? 'Reorder mode' : 'Click card to preview'}</p>
-          <button
-            onClick={() => {
-              // exiting reorder mode should clear any drag state
-              if (reorderMode) {
-                setDraggedItem(null);
-                setDraggedOver(null);
-                setIsTouchDragging(false);
-                setTouchPos(null);
-                document.body.style.overflow = '';
-              }
-              setReorderMode((v) => !v);
-            }}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium shadow ${
-              reorderMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {reorderMode ? 'Done' : 'Reorder'}
-          </button>
+      <div className="mb-5">
+        <div className="flex flex-col gap-3 sm:hidden">
+          <h2 className="text-xl font-semibold">Your Images ({images.length})</h2>
+          <div className="flex items-center gap-3">
+            {totalImages > 0 && (
+              <button
+                onClick={onDeleteAll}
+                className="px-3 py-1.5 rounded-md text-sm font-medium shadow bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Delete All
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (reorderMode) {
+                  setDraggedItem(null);
+                  setDraggedOver(null);
+                  setIsTouchDragging(false);
+                  setTouchPos(null);
+                  document.body.style.overflow = '';
+                }
+                setReorderMode((v) => !v);
+              }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium shadow ${
+                reorderMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {reorderMode ? 'Done' : 'Reorder'}
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden sm:flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Your Images ({images.length})</h2>
+          <div className="flex items-center gap-3">
+            <p className="hidden md:block text-sm text-gray-500">{reorderMode ? 'Reorder mode' : 'Click card to preview'}</p>
+            {totalImages > 0 && (
+              <button
+                onClick={onDeleteAll}
+                className="px-3 py-1.5 rounded-md text-sm font-medium shadow bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Delete All
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (reorderMode) {
+                  setDraggedItem(null);
+                  setDraggedOver(null);
+                  setIsTouchDragging(false);
+                  setTouchPos(null);
+                  document.body.style.overflow = '';
+                }
+                setReorderMode((v) => !v);
+              }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium shadow ${
+                reorderMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {reorderMode ? 'Done' : 'Reorder'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -248,7 +318,6 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
               key={image.id}
               className="rounded-xl bg-white border shadow-sm transition-all sm:col-span-2 md:col-span-2 lg:col-span-2"
             >
-              {/* Top: preview (click still opens modal) */}
               <button
                 type="button"
                 onClick={() => openModal(image)}
@@ -264,34 +333,54 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
                 </div>
               </button>
 
-              {/* Inline edit area within card */}
               <div className="p-3 md:p-4 space-y-3">
                 <input
                   type="text"
                   value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${
+                    editTitleError 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   placeholder="Enter image title"
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Replace Image (optional)</label>
+                {editTitleError && (
+                  <p className="text-xs text-red-600 mt-1">{editTitleError}</p>
+                )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Replace Image (Optional)
+                  </label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={onReplaceImageSelected}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    disabled={isProcessingFile}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                  {isProcessingFile && (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                      <Loader2 size={16} className="animate-spin" />
+                      Processing image...
+                    </div>
+                  )}
                   {editFileError && (
                     <p className="mt-2 text-sm text-red-600">{editFileError}</p>
                   )}
                 </div>
                 <div className="flex gap-2 flex-col sm:flex-row">
                   <button
-                    onClick={saveEdit}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1"
+                    onClick={handleSave}
+                    disabled={isEditing || isProcessingFile}
+                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1 transition-colors"
                   >
-                    <Save size={16} />
-                    Save
+                    {isEditing ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    {isEditing ? 'Saving...' : 'Save'}
                   </button>
                   <button
                     onClick={cancelEdit}
@@ -341,7 +430,6 @@ const ImageGallery = ({ images, onEdit, onDelete, onReorder, isLoading }: ImageG
         ))}
       </div>
 
-      {/* Floating preview that follows finger during touch drag */}
       {isTouchDragging && draggedItem && touchPos && (
         <div
           className="fixed z-50 pointer-events-none"

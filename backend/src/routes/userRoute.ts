@@ -6,7 +6,6 @@ import { getProfile, updateProfilePhoto } from "../controllers/authController";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Professional endpoint names
 router.get("/profileinfo", authMiddleware, getProfile);
 router.patch("/updateImage", authMiddleware, upload.single('image'), updateProfilePhoto);
 

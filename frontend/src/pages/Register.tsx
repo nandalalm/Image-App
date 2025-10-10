@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { registerSchema } from "../validation/registerSchema";
 import { validateForm } from "../utils/validateForm";
-import axiosInstance from "../api/axiosInstance";
+import { AuthApi } from "../services";
+import type { RegisterData } from "../types/auth";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = result.data as typeof formData;
-      await axiosInstance.post("/auth/register", registerData);
+      await AuthApi.register(registerData as RegisterData);
       navigate("/verify-otp", { state: { email: registerData.email } });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

@@ -22,10 +22,8 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-// HTTP request logger
 app.use(loggerMiddleware);
 
-// Connect to databases
 connectDB();
 connectRedis();
 

@@ -35,7 +35,6 @@ const imageSchema = new Schema<IImage>(
   }
 );
 
-// Index for efficient querying by user and order
 imageSchema.index({ userId: 1, order: 1 });
 
 export const ImageModel = mongoose.model<IImage>("Image", imageSchema);

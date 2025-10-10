@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/store";
 import Navbar from "../components/Navbar";
 import { useEffect, useRef, useState } from "react";
-import axiosInstance from "../api/axiosInstance";
+import { UserApi } from "../services";
 import { fetchProfile } from "../redux/authSlice";
 import { useToast } from "../components/ToastProvider";
 
@@ -14,8 +14,7 @@ const Profile = () => {
   const [uploading, setUploading] = useState(false);
   const { show } = useToast();
   const [fileError, setFileError] = useState<string>("");
-  
-  // Auto-dismiss inline error after 3 seconds
+
   useEffect(() => {
     if (!fileError) return;
     const t = setTimeout(() => setFileError(""), 3000);
@@ -43,11 +42,7 @@ const Profile = () => {
     setFileError("");
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append('image', file);
-      await axiosInstance.patch('/user/updateImage', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      await UserApi.updateProfileImage(file);
       await dispatch(fetchProfile());
       show('Profile image updated', 'success');
     } catch (err) {
@@ -63,10 +58,8 @@ const Profile = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Profile content */}
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
         <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8 relative">
-          {/* Back to Home button - top left of card */}
           <button
             onClick={() => navigate("/home")}
             className="absolute top-5 left-5 inline-flex items-center gap-1 text-gray-600 hover:text-gray-900 text-sm"
@@ -77,10 +70,8 @@ const Profile = () => {
             <span>Back</span>
           </button>
 
-          {/* Profile content centered */}
           <div className="flex flex-col items-center pt-10">
             <div className="relative">
-              {/* Avatar */}
               {profileImageUrl ? (
                 <img
                   src={profileImageUrl}
@@ -92,7 +83,6 @@ const Profile = () => {
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
-              {/* Edit icon overlay */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -113,16 +103,13 @@ const Profile = () => {
               </button>
             </div>
 
-            {/* Error message - only shows when there's an error */}
             {fileError && (
               <div className="mt-4">
                 <p className="text-sm text-red-600 text-center">{fileError}</p>
               </div>
             )}
 
-            {/* Name */}
             <h2 className={`${fileError ? 'mt-4' : 'mt-6'} text-2xl font-bold text-gray-900 text-center`}>{displayName}</h2>
-            {/* Email */}
             <p className="mt-2 text-gray-600 text-center">{email}</p>
           </div>
         </div>

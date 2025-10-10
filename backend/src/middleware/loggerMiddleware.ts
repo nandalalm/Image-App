@@ -3,36 +3,28 @@ import type { Request, Response, RequestHandler } from "express";
 import fs from "fs";
 import path from "path";
 
-// Select format based on environment
-// - development: concise colored output
-// - production: standard Apache combined format
 const format: morgan.FormatFn | string =
   process.env.NODE_ENV === "production" ? "combined" : "dev";
 
-// Optionally skip noisy endpoints (example: health checks)
 const skip: (req: Request, res: Response) => boolean = (req: Request, _res: Response) => {
   const noisyPaths = ["/health", "/favicon.ico"];
   return noisyPaths.includes(req.path);
 };
 
-// Ensure logs directory exists
 const logsDir = path.join(process.cwd(), "logs");
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Daily file name (rotation at process start; for real rotation use a rotating stream package)
-const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+const dateStr = new Date().toISOString().slice(0, 10); 
 const accessLogPath = path.join(logsDir, `access-${dateStr}.log`);
 const errorLogPath = path.join(logsDir, `error-${dateStr}.log`);
 
 const accessLogStream = fs.createWriteStream(accessLogPath, { flags: "a" });
 const errorLogStream = fs.createWriteStream(errorLogPath, { flags: "a" });
 
-// File-only logger
 const fileLogger = morgan(format, { skip, stream: accessLogStream });
 
-// Error logger function
 export const logError = (error: Error, req?: Request, additionalInfo?: any) => {
   const timestamp = new Date().toISOString();
   const errorLog = {
@@ -50,7 +42,6 @@ export const logError = (error: Error, req?: Request, additionalInfo?: any) => {
   errorLogStream.write(JSON.stringify(errorLog) + "\n");
 };
 
-// Info logger function
 export const logInfo = (message: string, additionalInfo?: any) => {
   const timestamp = new Date().toISOString();
   const infoLog = {
@@ -63,7 +54,6 @@ export const logInfo = (message: string, additionalInfo?: any) => {
   errorLogStream.write(JSON.stringify(infoLog) + "\n");
 };
 
-// Warning logger function
 export const logWarning = (message: string, additionalInfo?: any) => {
   const timestamp = new Date().toISOString();
   const warningLog = {
