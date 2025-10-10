@@ -6,7 +6,7 @@ interface AuthState {
   accessToken: string | null;
   loading: boolean;
   error: string | null;
-  user: { email: string; name: string } | null;
+  user: { firstName: string; lastName?: string; email: string; profileImageUrl?: string } | null;
 }
 
 const initialState: AuthState = {
@@ -58,6 +58,20 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+// ✅ Fetch profile
+export const fetchProfile = createAsyncThunk(
+  "auth/fetchProfile",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.get("/user/profileinfo");
+      return res.data.user as { firstName: string; lastName?: string; email: string; profileImageUrl?: string };
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch profile");
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -65,7 +79,7 @@ const authSlice = createSlice({
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
     },
-    setUser: (state, action: PayloadAction<{ email: string; name: string } | null>) => {
+    setUser: (state, action: PayloadAction<{ firstName: string; lastName?: string; email: string; profileImageUrl?: string } | null>) => {
       state.user = action.payload;
     },
     logout: (state) => {
@@ -102,6 +116,19 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.user = null;
         state.error = null;
+      })
+      // Fetch profile cases
+      .addCase(fetchProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(fetchProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

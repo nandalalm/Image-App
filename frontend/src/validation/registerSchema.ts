@@ -4,21 +4,34 @@ export const registerSchema = z.object({
   firstName: z
     .string()
     .trim()
-    .min(2, "First name must be at least 2 characters long")
-    .regex(/^[A-Za-z\s]+$/, "First name must contain only letters"),
+    .refine((val) => val.length > 0, "This field cannot be empty")
+    .refine((val) => val.length >= 4, "First name must be at least 4 characters long")
+    .refine((val) => /^[A-Za-z]+$/.test(val), "First name must contain only letters (no spaces, numbers, or special characters)"),
   lastName: z
     .string()
     .trim()
     .optional()
     .refine(
-      (val) => !val || /^[A-Za-z\s]+$/.test(val),
-      "Last name must contain only letters"
+      (val) => !val || (val.length > 0 && /^[A-Za-z]+$/.test(val)),
+      "Last name must contain only letters (no spaces, numbers, or special characters)"
     ),
   email: z
     .string()
     .trim()
-    .email("Invalid email format"),
+    .refine((val) => val.length > 0, "This field cannot be empty")
+    .refine((val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), "Invalid email format"),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters long"),
+    .refine((val) => val.length > 0, "This field cannot be empty")
+    .refine((val) => val.length >= 6, "Password must be at least 6 characters long")
+    .refine((val) => /[A-Z]/.test(val), "Password must contain at least 1 uppercase letter")
+    .refine((val) => /[a-z]/.test(val), "Password must contain at least 1 lowercase letter")
+    .refine((val) => /[0-9]/.test(val), "Password must contain at least 1 number")
+    .refine((val) => /[^A-Za-z0-9]/.test(val), "Password must contain at least 1 special character"),
+  confirmPassword: z
+    .string()
+    .refine((val) => val.length > 0, "This field cannot be empty"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });

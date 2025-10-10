@@ -1,8 +1,9 @@
+import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-export const generateOTP = (): string => Math.floor(100000 + Math.random() * 900000).toString();
+export const generateResetToken = (): string => crypto.randomBytes(32).toString("hex");
 
-export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
+export const sendPasswordResetEmail = async (to: string, resetLink: string): Promise<void> => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -14,7 +15,7 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Your Verification Code</title>
+      <title>Reset Your Password</title>
       <style>
         * {
           margin: 0;
@@ -24,7 +25,7 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
           line-height: 1.6;
-          color: rgb(8, 131, 232);
+          color:rgb(8, 131, 232);
           background-color: #f5f5f5;
         }
         .container {
@@ -36,7 +37,7 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
           overflow: hidden;
         }
         .header {
-          background-color:rgb(8, 131, 232);
+          background-color: rgb(8, 131, 232);
           padding: 30px;
           text-align: center;
         }
@@ -47,7 +48,6 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
         }
         .content {
           padding: 40px 30px;
-          text-align: center;
         }
         .message {
           font-size: 16px;
@@ -55,20 +55,20 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
           margin-bottom: 30px;
           line-height: 1.6;
         }
-        .otp-code {
-          background-color: #f8f9fa;
-          border: 2px solid #dee2e6;
-          border-radius: 8px;
-          padding: 20px;
-          margin: 30px 0;
+        .reset-button {
+          display: inline-block;
+          background-color:rgb(8, 131, 232);
+          color: #ffffff !important;
+          text-decoration: none;
+          padding: 14px 28px;
+          border-radius: 4px;
+          font-weight: 500;
+          font-size: 16px;
           text-align: center;
         }
-        .otp-code h2 {
-          font-size: 32px;
-          font-weight: 700;
-          color: #000000;
-          letter-spacing: 4px;
-          margin: 0;
+        .button-container {
+          text-align: center;
+          margin: 30px 0;
         }
         .expiry-notice {
           background-color: #f8f9fa;
@@ -104,9 +104,9 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
           .header h1 {
             font-size: 20px;
           }
-          .otp-code h2 {
-            font-size: 28px;
-            letter-spacing: 2px;
+          .reset-button {
+            padding: 12px 24px;
+            font-size: 15px;
           }
         }
       </style>
@@ -114,20 +114,21 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>Verification Code</h1>
+          <h1>Reset Your Password</h1>
         </div>
         
         <div class="content">
           <p class="message">
-            Your verification code for Image App registration:
+            Hello! We received a request to reset the password for your account. 
+            Click the button below to create a new password.
           </p>
           
-          <div class="otp-code">
-            <h2>${otp}</h2>
+          <div class="button-container">
+            <a href="${resetLink}" class="reset-button">Reset Password</a>
           </div>
           
           <div class="expiry-notice">
-            <p>This code will expire in 5 minutes</p>
+            <p>This link will expire in 15 minutes</p>
           </div>
         </div>
         
@@ -142,10 +143,16 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
   await transporter.sendMail({
     from: `"Image App" <${process.env.EMAIL_USER}>`,
     to,
-    subject: "Your Verification Code - Image App",
+    subject: "Reset Your Password - Image App",
     html: htmlTemplate,
-    text: `Your verification code is ${otp}. It expires in 5 minutes.
+    text: `Reset Your Password
 
-    © ${new Date().getFullYear()} Image App. All rights reserved.`
+Hello! We received a request to reset the password for your account.
+
+Reset Link: ${resetLink}
+
+This link will expire in 15 minutes.
+
+© ${new Date().getFullYear()} Image App. All rights reserved.`
   });
 };

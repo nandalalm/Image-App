@@ -6,25 +6,32 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db";
 import { connectRedis } from "./config/redisClient";
 import { errorMiddleware } from "./middleware/errorMiddleware";
+import { loggerMiddleware } from "./middleware/loggerMiddleware";
 import authRoutes from "./routes/authRoute";
+import imageRoutes from "./routes/imageRoute";
+import userRoutes from "./routes/userRoute";
 
 dotenv.config();
 const app = express();
 
 app.use(cors({ 
-  origin: process.env.CLIENT_URL || "http://localhost:5173", 
+  origin: process.env.CLIENT_URL, 
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(cookieParser());
+// HTTP request logger
+app.use(loggerMiddleware);
 
 // Connect to databases
 connectDB();
 connectRedis();
 
 app.use("/api/auth", authRoutes);
+app.use("/api/images", imageRoutes);
+app.use("/api/user", userRoutes);
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
