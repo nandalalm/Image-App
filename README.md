@@ -50,58 +50,82 @@ Users can register, log in, upload multiple images, edit, delete, and reorder th
 
 ---
 
-## ⚙️ Environment Variables
+## ⚙️ Getting Started
 
-### 🧩 Backend `.env`
+### 1️⃣ Clone the Repository
+
+```bash
+git clone https://github.com/your-username/image-app.git
+cd image-app
+
+```
+
+### 2️⃣ Navigate to the backend folder and install dependencies
+
+```bash
+cd backend
+npm install
+
+```
+
+### 3️⃣ Create a .env file in the backend directory and add the following environment variables
 
 ```env
-MONGO_URI=
 PORT=5000
+MONGO_URI=your_mongodb_connection_string
 
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=
-AWS_BUCKET_NAME=
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=your_aws_region
+AWS_BUCKET_NAME=your_s3_bucket_name
 
-ACCESS_TOKEN_SECRET=
-REFRESH_TOKEN_SECRET=
+ACCESS_TOKEN_SECRET=your_access_token_secret
+REFRESH_TOKEN_SECRET=your_refresh_token_secret
 ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_EXPIRY=7d
-REDIS_URL=
 
-EMAIL_USER=
-EMAIL_PASS=
+REDIS_URL=your_redis_connection_url
+
+EMAIL_USER=your_email_address
+EMAIL_PASS=your_email_app_password
 
 CLIENT_URL=http://localhost:5173
 BACKEND_URL=http://localhost:5000
 
 ```
 
-### 🧩 Frontend `.env`
+### 4️⃣ Start the backend server
+
+```bash
+npm run dev
+
+```
+
+### 5️⃣ Navigate to the frontend folder and install dependencies
+
+```bash
+cd ../frontend
+npm install
+
+```
+
+### 6️⃣ Create a .env file in the frontend directory and add the following
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
 
 ```
 
-🧰 Installation & Setup
+### 7️⃣ Start the frontend development server
 
-🔹 Backend Setup
-
-```
-cd backend
-npm install
+```bash
 npm run dev
 
 ```
 
-🔹 Frontend Setup
+👨‍💻 Author
+
+Nandalal M
+Self-taught MERN Stack Developer
 
 ```
-cd frontend
-npm install
-npm run dev
-
-```
-
-
