@@ -3,23 +3,24 @@ import { container } from "../config/container";
 import { TYPES } from "../config/types";
 import { IImageService, ImageFileData } from "../interfaces/services/IImageService";
 import { HttpStatus } from "../constants/httpStatus";
+import { Messages } from "../constants/messages";
 
 export const createImages = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     const { images } = req.body;
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: "No images provided" });
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.NO_IMAGES_PROVIDED });
     }
 
     for (const img of images) {
       if (!img.title || !img.imageUrl || !img.s3Key) {
         return res.status(HttpStatus.BAD_REQUEST).json({ 
-          message: "Each image must have title, imageUrl, and s3Key" 
+          message: Messages.IMAGE_FIELDS_REQUIRED 
         });
       }
     }
@@ -28,7 +29,7 @@ export const createImages = async (req: Request, res: Response, next: NextFuncti
     const createdImages = await imageService.createImages(userId, images);
 
     res.status(HttpStatus.CREATED).json({
-      message: "Images created successfully",
+      message: Messages.IMAGES_CREATED,
       images: createdImages
     });
   } catch (err) {
@@ -41,7 +42,7 @@ export const getUserImages = async (req: Request, res: Response, next: NextFunct
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     const page = parseInt(req.query.page as string) || 1;
@@ -79,11 +80,11 @@ export const updateImage = async (req: Request, res: Response, next: NextFunctio
     const file = req.file;
 
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     if (!title) {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: "Title is required" });
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.TITLE_REQUIRED });
     }
 
     let fileData: ImageFileData | undefined;
@@ -100,11 +101,11 @@ export const updateImage = async (req: Request, res: Response, next: NextFunctio
     const updatedImage = await imageService.updateImage(userId, imageId, title, fileData);
 
     if (!updatedImage) {
-      return res.status(HttpStatus.NOT_FOUND).json({ message: "Image not found" });
+      return res.status(HttpStatus.NOT_FOUND).json({ message: Messages.IMAGE_NOT_FOUND });
     }
 
     res.status(HttpStatus.OK).json({
-      message: "Image updated successfully",
+      message: Messages.IMAGE_UPDATED,
       image: {
         id: updatedImage._id,
         title: updatedImage.title,
@@ -124,18 +125,18 @@ export const deleteImage = async (req: Request, res: Response, next: NextFunctio
     const { imageId } = req.params;
 
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     const imageService = container.get<IImageService>(TYPES.ImageService);
     const deleted = await imageService.deleteImage(userId, imageId);
 
     if (!deleted) {
-      return res.status(HttpStatus.NOT_FOUND).json({ message: "Image not found" });
+      return res.status(HttpStatus.NOT_FOUND).json({ message: Messages.IMAGE_NOT_FOUND });
     }
 
     res.status(HttpStatus.OK).json({
-      message: "Image deleted successfully"
+      message: Messages.IMAGE_DELETED
     });
   } catch (err) {
     next(err);
@@ -147,7 +148,7 @@ export const deleteAllImages = async (req: Request, res: Response, next: NextFun
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     const imageService = container.get<IImageService>(TYPES.ImageService);
@@ -157,7 +158,7 @@ export const deleteAllImages = async (req: Request, res: Response, next: NextFun
     
     if (imageCount === 0) {
       return res.status(HttpStatus.OK).json({
-        message: "No images to delete",
+        message: Messages.NO_IMAGES_TO_DELETE,
         deletedCount: 0
       });
     }
@@ -177,7 +178,7 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     const files = req.files as Express.Multer.File[];
@@ -185,7 +186,7 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
 
     if (!files || files.length === 0) {
       return res.status(HttpStatus.BAD_REQUEST).json({ 
-        message: "No files uploaded" 
+        message: Messages.NO_FILES_UPLOADED 
       });
     }
 
@@ -210,11 +211,11 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
 
     if (!titles || titles.length !== files.length) {
       return res.status(HttpStatus.BAD_REQUEST).json({
-        message: "Titles must be provided for each file",
+        message: Messages.TITLES_REQUIRED,
         details: {
           receivedFiles: files.length,
           receivedTitles: Array.isArray(titles) ? titles.length : 0,
-          hint: "Send 'titles' as a JSON array string matching the number of uploaded files"
+          hint: Messages.TITLES_HINT
         }
       });
     }
@@ -223,17 +224,17 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
       const title = titles[i].trim();
       if (!title) {
         return res.status(HttpStatus.BAD_REQUEST).json({
-          message: `Title for file ${i + 1} cannot be empty`
+          message: Messages.TITLE_CANNOT_BE_EMPTY.replace('{fileNumber}', (i + 1).toString())
         });
       }
       if (!/^[A-Za-z0-9\s]+$/.test(title)) {
         return res.status(HttpStatus.BAD_REQUEST).json({
-          message: `Title for file ${i + 1} must contain only letters, numbers, and spaces`
+          message: Messages.TITLE_INVALID_CHARS.replace('{fileNumber}', (i + 1).toString())
         });
       }
       if (title.length > 50) {
         return res.status(HttpStatus.BAD_REQUEST).json({
-          message: `Title for file ${i + 1} must be 50 characters or less`
+          message: Messages.TITLE_TOO_LONG.replace('{fileNumber}', (i + 1).toString())
         });
       }
       titles[i] = title; 
@@ -250,12 +251,10 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
     const createdImages = await imageService.createImagesFromFiles(userId, imageFiles);
 
     res.status(HttpStatus.CREATED).json({
-      message: "Images uploaded successfully",
+      message: Messages.IMAGES_UPLOADED,
       images: createdImages
     });
   } catch (err) {
-    console.error('Controller: Upload failed with error:', err);
-    console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
     next(err);
   }
 };
@@ -266,13 +265,13 @@ export const reorderImages = async (req: Request, res: Response, next: NextFunct
     const imageOrders = (req.body as any).imageOrders || (req.body as any).images;
 
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "User not authenticated" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.USER_NOT_AUTHENTICATED });
     }
 
     if (!imageOrders || !Array.isArray(imageOrders)) {
       return res.status(HttpStatus.BAD_REQUEST).json({ 
-        message: "imageOrders array is required",
-        hint: "Send body as { imageOrders: [{ id: string, order: number }] } or { images: [...] }"
+        message: Messages.IMAGE_ORDERS_REQUIRED,
+        hint: Messages.IMAGE_ORDERS_HINT
       });
     }
 
@@ -280,7 +279,7 @@ export const reorderImages = async (req: Request, res: Response, next: NextFunct
     await imageService.reorderImages(userId, imageOrders);
 
     res.status(HttpStatus.OK).json({
-      message: "Images reordered successfully"
+      message: Messages.IMAGES_REORDERED
     });
   } catch (err) {
     next(err);

@@ -4,6 +4,7 @@ import { container } from "../config/container";
 import { TYPES } from "../config/types";
 import { IUserService } from "../interfaces/services/IUserService";
 import { HttpStatus } from "../constants/httpStatus";
+import { Messages } from "../constants/messages";
 
 const userService = container.get<IUserService>(TYPES.UserService);
 
@@ -20,15 +21,15 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = req.body as { email?: string };
-    if (!email) return res.status(HttpStatus.BAD_REQUEST).json({ message: "Email is required" });
+    if (!email) return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.EMAIL_REQUIRED });
     const origin = req.headers.origin || process.env.FRONTEND_BASE_URL;
     
     const result = await userService.requestPasswordReset(email, typeof origin === 'string' ? origin : undefined);
     if (!result.emailExists) {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: "Email not registered" });
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.EMAIL_NOT_REGISTERED });
     }
     
-    return res.status(HttpStatus.OK).json({ message: "Reset link sent to your email" });
+    return res.status(HttpStatus.OK).json({ message: Messages.RESET_LINK_SENT });
   } catch (err) {
     next(err);
   }
@@ -37,10 +38,10 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token, password } = req.body as { token?: string; password?: string };
-    if (!token || !password) return res.status(HttpStatus.BAD_REQUEST).json({ message: "token and password are required" });
-    if (password.length < 6) return res.status(HttpStatus.BAD_REQUEST).json({ message: "Password must be at least 6 characters long" });
+    if (!token || !password) return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.TOKEN_AND_PASSWORD_REQUIRED });
+    if (password.length < 6) return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.PASSWORD_TOO_SHORT });
     await userService.resetPassword(token, password);
-    return res.status(HttpStatus.OK).json({ message: "Password updated" });
+    return res.status(HttpStatus.OK).json({ message: Messages.PASSWORD_UPDATED });
   } catch (err) {
     next(err);
   }
@@ -50,7 +51,7 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
   try {
     const { email, otp } = req.body;
     await userService.verifyOTP(email, otp);
-    res.status(HttpStatus.OK).json({ message: "OTP verified successfully" });
+    res.status(HttpStatus.OK).json({ message: Messages.OTP_VERIFIED });
   } catch (err) {
     next(err);
   }
@@ -59,10 +60,10 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
 export const resendOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(HttpStatus.BAD_REQUEST).json({ message: "Email is required" });
+    if (!email) return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.EMAIL_REQUIRED });
     
     await userService.resendOTP(email);
-    res.status(HttpStatus.OK).json({ message: "OTP sent successfully" });
+    res.status(HttpStatus.OK).json({ message: Messages.OTP_SEND_SUCCESS });
   } catch (err) {
     next(err);
   }
@@ -90,7 +91,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) return res.status(HttpStatus.UNAUTHORIZED).json({ message: "No refresh token found" });
+    if (!token) return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.NO_REFRESH_TOKEN });
 
     interface CustomJwtPayload extends JwtPayload {
       id: string;
@@ -98,7 +99,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     }
     
     jwt.verify(token, process.env.REFRESH_TOKEN_SECRET!, (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
-      if (err) return res.status(HttpStatus.FORBIDDEN).json({ message: "Invalid refresh token" });
+      if (err) return res.status(HttpStatus.FORBIDDEN).json({ message: Messages.INVALID_REFRESH_TOKEN });
 
       const payload = decoded as CustomJwtPayload;
       const accessToken = jwt.sign({ id: payload.id, email: payload.email }, process.env.ACCESS_TOKEN_SECRET!, {
@@ -116,7 +117,7 @@ export const getHome = async (req: Request, res: Response, next: NextFunction) =
   try {
     const user = req.user;
     res.status(HttpStatus.OK).json({ 
-      message: "Welcome to Home", 
+      message: Messages.WELCOME_HOME, 
       user: {
         id: user?.id,
         email: user?.email
@@ -136,7 +137,7 @@ export const logout = async (_req: Request, res: Response, next: NextFunction) =
       path: "/",
     });
     
-    res.status(HttpStatus.OK).json({ message: "Logged out successfully" });
+    res.status(HttpStatus.OK).json({ message: Messages.LOGGED_OUT });
   } catch (err) {
     next(err);
   }
@@ -146,7 +147,7 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.UNAUTHORIZED });
     }
     const profile = await userService.getProfile(userId);
     return res.status(HttpStatus.OK).json({ user: profile });
@@ -159,18 +160,18 @@ export const updateProfilePhoto = async (req: Request, res: Response, next: Next
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.UNAUTHORIZED });
     }
     const file = req.file;
     if (!file) {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: "No image provided" });
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: Messages.NO_IMAGE_PROVIDED });
     }
     const updated = await userService.updateProfileImage(userId, {
       buffer: file.buffer,
       originalname: file.originalname,
       mimetype: file.mimetype,
     });
-    return res.status(HttpStatus.OK).json({ user: updated, message: "Profile image updated" });
+    return res.status(HttpStatus.OK).json({ user: updated, message: Messages.PROFILE_IMAGE_UPDATED });
   } catch (err) {
     next(err);
   }

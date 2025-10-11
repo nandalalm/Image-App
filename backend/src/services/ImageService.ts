@@ -3,6 +3,7 @@ import { IImageService, ImageFileData, ImageUploadData, PaginatedImagesResult } 
 import { IImageRepository } from "../interfaces/Repositories/IImageRepository";
 import { IImage } from "../models/imageModel";
 import { logError } from "../middleware/loggerMiddleware";
+import { Messages } from "../constants/messages";
 
 export class ImageService implements IImageService {
   private _imageRepository: IImageRepository;
@@ -23,10 +24,10 @@ export class ImageService implements IImageService {
       .map(([key]) => key);
 
     if (missing.length > 0) {
-      console.error('Missing required environment variables:', missing);
-      console.error('Please add these to your .env file in the backend directory:');
+      console.error(Messages.MISSING_ENV_VARS + ':', missing);
+      console.error(Messages.ENV_VARS_INSTRUCTION);
       missing.forEach(envVar => {
-        console.error(`${envVar}=your_${envVar.toLowerCase()}_value`);
+        console.error(Messages.ENV_VAR_FORMAT.replace('{envVar}', envVar).replace('{envVar_lower}', envVar.toLowerCase()));
       });
     }
     
@@ -42,7 +43,7 @@ export class ImageService implements IImageService {
   private async uploadToS3(file: Buffer, fileName: string, contentType: string): Promise<{ url: string; key: string }> {
     try {
       if (!process.env.AWS_BUCKET_NAME) {
-        throw new Error('AWS_S3_BUCKET_NAME environment variable is not configured. Please add it to your .env file.');
+        throw new Error(Messages.S3_BUCKET_NOT_CONFIGURED);
       }
 
       const timestamp = Date.now();
@@ -62,8 +63,8 @@ export class ImageService implements IImageService {
       const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
       return { url, key };
     } catch (error) {
-      console.error('S3 upload failed:', error);
-      throw new Error(`S3 upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(Messages.S3_UPLOAD_FAILED + ':', error);
+      throw new Error(Messages.S3_UPLOAD_ERROR.replace('{error}', error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
@@ -78,7 +79,6 @@ export class ImageService implements IImageService {
         const fileData = files[i];
         
         try {
-          console.log('Uploading to S3...');
           const { url } = await this.uploadToS3(fileData.file, fileData.fileName, fileData.contentType);
           
           const imageData = {
@@ -91,15 +91,15 @@ export class ImageService implements IImageService {
           const createdImage = await this._imageRepository.create(imageData as any);
           createdImages.push(createdImage);
         } catch (error) {
-          console.error(`Failed to create image ${i + 1}:`, error);
+          console.error(Messages.IMAGE_CREATE_FAILED.replace('{index}', (i + 1).toString()) + ':', error);
           logError(error as Error, undefined, { userId, fileData: { title: fileData.title } });
-          throw new Error(`Failed to create image ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          throw new Error(Messages.IMAGE_CREATE_ERROR.replace('{index}', (i + 1).toString()).replace('{error}', error instanceof Error ? error.message : 'Unknown error'));
         }
       }
 
       return createdImages;
     } catch (error) {
-      console.error('createImagesFromFiles failed:', error);
+      console.error(Messages.CREATE_IMAGES_FAILED + ':', error);
       throw error;
     }
   }
@@ -121,9 +121,9 @@ export class ImageService implements IImageService {
 
         createdImages.push(newImage);
       } catch (error) {
-        console.error('Failed to create image record:', error);
+        console.error(Messages.IMAGE_RECORD_CREATE_FAILED + ':', error);
         logError(error as Error, undefined, { userId, imageData: { title: imageData.title, imageUrl: imageData.imageUrl } });
-        throw new Error('Failed to create image record');
+        throw new Error(Messages.IMAGE_RECORD_CREATE_FAILED);
       }
     }
 
@@ -144,7 +144,7 @@ export class ImageService implements IImageService {
   async updateImage(userId: string, imageId: string, title: string, file?: ImageFileData): Promise<IImage | null> {
     const existingImage = await this._imageRepository.findByUserIdAndId(userId, imageId);
     if (!existingImage) {
-      throw new Error('Image not found');
+      throw new Error(Messages.IMAGE_NOT_FOUND);
     }
 
     let updateData: Partial<IImage> = { title };
@@ -163,7 +163,7 @@ export class ImageService implements IImageService {
   async deleteImage(userId: string, imageId: string): Promise<boolean> {
     const existingImage = await this._imageRepository.findByUserIdAndId(userId, imageId);
     if (!existingImage) {
-      throw new Error('Image not found');
+      throw new Error(Messages.IMAGE_NOT_FOUND);
     }
 
     return await this._imageRepository.deleteByUserIdAndId(userId, imageId);
@@ -184,8 +184,8 @@ export class ImageService implements IImageService {
 
       return imageCount;
     } catch (error) {
-      console.error('deleteAllImages failed:', error);
-      throw new Error(`Failed to delete all images: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(Messages.DELETE_ALL_FAILED + ':', error);
+      throw new Error(Messages.DELETE_ALL_ERROR.replace('{error}', error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 

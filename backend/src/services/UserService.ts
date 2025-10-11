@@ -53,7 +53,7 @@ export class UserService implements IUserService {
     if (!storedOtp || storedOtp !== otp) throw new Error(Messages.OTP_INVALID);
 
     const tempUserDataStr = await getOTP(`tempUser:${email}`);
-    if (!tempUserDataStr) throw new Error("Registration session expired. Please register again.");
+    if (!tempUserDataStr) throw new Error(Messages.REGISTRATION_SESSION_EXPIRED);
 
     const tempUserData = JSON.parse(tempUserDataStr);
 
@@ -70,7 +70,7 @@ export class UserService implements IUserService {
 
   async resendOTP(email: string): Promise<void> {
     const tempUserDataStr = await getOTP(`tempUser:${email}`);
-    if (!tempUserDataStr) throw new Error("Registration session expired. Please register again.");
+    if (!tempUserDataStr) throw new Error(Messages.REGISTRATION_SESSION_EXPIRED);
 
     const otp = generateOTP();
     await setOTP(`otp:${email}`, otp, 300);
@@ -92,7 +92,7 @@ export class UserService implements IUserService {
 
   async getProfile(userId: string): Promise<UserDTO> {
     const user = await this._userRepository.findById(userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new Error(Messages.USER_NOT_FOUND);
     const dto: UserDTO = {
       firstName: user.firstName,
       lastName: user.lastName,
@@ -105,7 +105,7 @@ export class UserService implements IUserService {
   private async uploadToS3(file: Buffer, fileName: string, contentType: string): Promise<string> {
     const { AWS_BUCKET_NAME, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = process.env;
     if (!AWS_BUCKET_NAME || !AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
-      throw new Error("AWS S3 configuration missing. Please set AWS_BUCKET_NAME, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY");
+      throw new Error(Messages.AWS_S3_CONFIG_MISSING);
     }
     const timestamp = Date.now();
     const random = Math.random().toString(36).slice(2);
@@ -124,7 +124,7 @@ export class UserService implements IUserService {
   async updateProfileImage(userId: string, file: { buffer: Buffer; originalname: string; mimetype: string }): Promise<UserDTO> {
     const url = await this.uploadToS3(file.buffer, file.originalname, file.mimetype);
     const updated = await this._userRepository.updateProfileImageUrl(userId, url);
-    if (!updated) throw new Error("User not found");
+    if (!updated) throw new Error(Messages.USER_NOT_FOUND);
     return {
       firstName: updated.firstName,
       lastName: updated.lastName,
@@ -150,7 +150,7 @@ export class UserService implements IUserService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     const email = await getOTP(`reset:${token}`);
     if (!email) {
-      throw new Error("Invalid or expired reset token");
+      throw new Error(Messages.INVALID_RESET_TOKEN);
     }
     const hash = await bcrypt.hash(newPassword, 10);
     await this._userRepository.updatePasswordByEmail(email, hash);
