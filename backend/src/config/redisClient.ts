@@ -20,7 +20,7 @@ export const connectRedis = async (): Promise<void> => {
 
     await redisClient.connect();
   } catch (err) {
-    console.warn("Redis not available, using in-memory storage for OTP");
+    console.warn(err,"Redis not available, using in-memory storage for OTP");
     isRedisConnected = false;
     redisClient = null;
   }
