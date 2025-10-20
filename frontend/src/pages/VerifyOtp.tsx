@@ -2,10 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthApi } from "../services";
 import { useToast } from "../components/ToastProvider";
+import { useAppDispatch } from "../redux/store";
+import { setAccessToken, setUser } from "../redux/authSlice";
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const email = location.state?.email || "";
   const { show } = useToast();
   
@@ -82,12 +85,16 @@ export default function VerifyOtp() {
     setError(null);
 
     try {
-      await AuthApi.verifyOtp({ 
+      const response = await AuthApi.verifyOtp({ 
         email, 
         otp: otpString 
       });
-      show("Email verified successfully! You can now log in.", "success");
-      navigate("/login");
+
+      dispatch(setAccessToken(response.accessToken));
+      dispatch(setUser(response.user || null));
+
+      show("Email verified successfully! Welcome!", "success");
+      navigate("/home");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || "OTP verification failed");

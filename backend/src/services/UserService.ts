@@ -48,7 +48,11 @@ export class UserService implements IUserService {
     return userData;
   }
 
-  async verifyOTP(email: string, otp: string): Promise<boolean> {
+  async verifyOTP(email: string, otp: string): Promise<{ 
+    accessToken: string; 
+    refreshToken: string; 
+    user: { id: string; firstName: string; lastName?: string; email: string; profileImageUrl?: string | undefined };
+  }> {
     const storedOtp = await getOTP(`otp:${email}`);
     if (!storedOtp || storedOtp !== otp) throw new Error(Messages.OTP_INVALID);
 
@@ -63,9 +67,26 @@ export class UserService implements IUserService {
     await this._userRepository.createUser(tempUserData as IUser);
 
     await deleteOTP(`otp:${email}`);
-    await deleteOTP(`tempUser:${email}`);
     
-    return true;
+    const user = await this._userRepository.findByEmail(email);
+    if (!user) {
+      throw new Error("User creation failed");
+    }
+
+    const accessToken = createAccessToken(user.id, user.email);
+    const refreshToken = createRefreshToken(user.id, user.email);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl,
+      },
+    };
   }
 
   async resendOTP(email: string): Promise<void> {
@@ -88,6 +109,10 @@ export class UserService implements IUserService {
     const refreshToken = createRefreshToken(user.id, user.email);
 
     return { accessToken, refreshToken };
+  }
+
+  async getUserByEmail(email: string): Promise<IUser | null> {
+    return await this._userRepository.findByEmail(email);
   }
 
   async getProfile(userId: string): Promise<UserDTO> {

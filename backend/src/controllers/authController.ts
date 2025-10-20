@@ -50,8 +50,21 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, otp } = req.body;
-    await userService.verifyOTP(email, otp);
-    res.status(HttpStatus.OK).json({ message: Messages.OTP_VERIFIED });
+    
+    const { accessToken, refreshToken, user } = await userService.verifyOTP(email, otp);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(HttpStatus.OK).json({
+      accessToken,
+      user
+    });
   } catch (err) {
     next(err);
   }
