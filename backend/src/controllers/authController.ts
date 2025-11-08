@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt, { VerifyErrors, JwtPayload } from "jsonwebtoken";
 import { container } from "../config/container";
 import { TYPES } from "../config/types";
-import { IUserService } from "../interfaces/services/IUserService";
+import { IUserService } from "../interfaces/services/IAuthService";
 import { HttpStatus } from "../constants/httpStatus";
 import { Messages } from "../constants/messages";
 

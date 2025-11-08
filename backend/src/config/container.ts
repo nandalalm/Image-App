@@ -1,10 +1,10 @@
 import { Container } from "inversify";
 import { IUserRepository } from "../interfaces/Repositories/IUserRepository";
-import { IUserService } from "../interfaces/services/IUserService";
+import { IUserService } from "../interfaces/services/IAuthService";
 import { IImageRepository } from "../interfaces/Repositories/IImageRepository";
 import { IImageService } from "../interfaces/services/IImageService";
 import { UserRepository } from "../repositories/UserRepository";
-import { UserService } from "../services/UserService";
+import { UserService } from "../services/AuthService";
 import { ImageRepository } from "../repositories/ImageRepository";
 import { ImageService } from "../services/ImageService";
 import { TYPES } from "./types";
