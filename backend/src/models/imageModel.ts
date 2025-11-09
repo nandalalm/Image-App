@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IImage extends Document {
   title: string;
   imageUrl: string;
+  s3Key: string;
   userId: mongoose.Types.ObjectId;
   order: number;
   createdAt: Date;
@@ -17,6 +18,10 @@ const imageSchema = new Schema<IImage>(
       trim: true,
     },
     imageUrl: {
+      type: String,
+      required: true,
+    },
+    s3Key: {
       type: String,
       required: true,
     },

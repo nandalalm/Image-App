@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IImageService, ImageFileData, ImageUploadData, PaginatedImagesResult } from "../interfaces/services/IImageService";
 import { IImageRepository } from "../interfaces/Repositories/IImageRepository";
 import { IImage } from "../models/imageModel";
@@ -31,11 +32,19 @@ export class ImageService implements IImageService {
       });
     }
     
+    const awsRegion = process.env.AWS_REGION;
+    const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+      throw new Error("AWS configuration missing");
+    }
+
     this._s3Client = new S3Client({
-      region: process.env.AWS_REGION,
+      region: awsRegion,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: awsAccessKeyId,
+        secretAccessKey: awsSecretAccessKey,
       },
     });
   }
@@ -79,16 +88,17 @@ export class ImageService implements IImageService {
         const fileData = files[i];
         
         try {
-          const { url } = await this.uploadToS3(fileData.file, fileData.fileName, fileData.contentType);
+          const { url, key } = await this.uploadToS3(fileData.file, fileData.fileName, fileData.contentType);
           
           const imageData = {
-            userId,
+            userId: new (await import('mongoose')).Types.ObjectId(userId),
             title: fileData.title,
             imageUrl: url,
+            s3Key: key,
             order: ++maxOrder,
           };
 
-          const createdImage = await this._imageRepository.create(imageData as any);
+          const createdImage = await this._imageRepository.create(imageData);
           createdImages.push(createdImage);
         } catch (error) {
           console.error(Messages.IMAGE_CREATE_FAILED.replace('{index}', (i + 1).toString()) + ':', error);
@@ -113,11 +123,11 @@ export class ImageService implements IImageService {
     for (const imageData of images) {
       try {
         const newImage = await this._imageRepository.create({
-          userId,
+          userId: new (await import('mongoose')).Types.ObjectId(userId),
           title: imageData.title,
           imageUrl: imageData.imageUrl,
           order: ++maxOrder,
-        } as any);
+        });
 
         createdImages.push(newImage);
       } catch (error) {
@@ -147,11 +157,12 @@ export class ImageService implements IImageService {
       throw new Error(Messages.IMAGE_NOT_FOUND);
     }
 
-    let updateData: Partial<IImage> = { title };
+    const updateData: Partial<IImage> = { title };
 
     if (file) {
-      const { url } = await this.uploadToS3(file.file, file.fileName, file.contentType);
+      const { url, key } = await this.uploadToS3(file.file, file.fileName, file.contentType);
       updateData.imageUrl = url;
+      updateData.s3Key = key;
     }
 
     Object.assign(existingImage, updateData);
@@ -166,7 +177,15 @@ export class ImageService implements IImageService {
       throw new Error(Messages.IMAGE_NOT_FOUND);
     }
 
-    return await this._imageRepository.deleteByUserIdAndId(userId, imageId);
+    try {
+      await this.deleteFromS3(existingImage.s3Key);
+      const deleted = await this._imageRepository.deleteByUserIdAndId(userId, imageId);
+      return deleted;
+    } catch (error) {
+      console.error(`Failed to delete image ${imageId}:`, error);
+      console.warn(`S3 deletion failed for image ${imageId}, proceeding with database deletion`);
+      return await this._imageRepository.deleteByUserIdAndId(userId, imageId);
+    }
   }
 
   async deleteAllImages(userId: string): Promise<number> {
@@ -178,11 +197,34 @@ export class ImageService implements IImageService {
         return 0;
       }
 
-      for (const image of userImages) {
-        await this._imageRepository.deleteByUserIdAndId(userId, (image as any)._id.toString());
+      let successfulDeletions = 0;
+      let s3DeletionFailures = 0;
+
+      for (const image of userImages as IImage[]) {
+        try {
+          await this.deleteFromS3(image.s3Key);
+          
+          await this._imageRepository.deleteByUserIdAndId(userId, image._id?.toString() || '');
+          successfulDeletions++;
+          
+        } catch (error) {
+          console.error(`Failed to delete image ${image._id?.toString() || 'unknown'} from S3:`, error);
+          s3DeletionFailures++;
+          
+          try {
+            await this._imageRepository.deleteByUserIdAndId(userId, image._id?.toString() || '');
+            successfulDeletions++;
+          } catch (dbError) {
+            console.error(`Failed to delete image ${image._id?.toString() || 'unknown'} from database:`, dbError);
+          }
+        }
       }
 
-      return imageCount;
+      if (s3DeletionFailures > 0) {
+        console.warn(`${s3DeletionFailures} images failed to delete from S3 but were removed from database`);
+      }
+
+      return successfulDeletions;
     } catch (error) {
       console.error(Messages.DELETE_ALL_FAILED + ':', error);
       throw new Error(Messages.DELETE_ALL_ERROR.replace('{error}', error instanceof Error ? error.message : 'Unknown error'));
@@ -191,5 +233,57 @@ export class ImageService implements IImageService {
 
   async reorderImages(userId: string, imageOrders: { id: string; order: number }[]): Promise<void> {
     await this._imageRepository.updateOrder(userId, imageOrders);
+  }
+
+  async generateSignedUrl(s3Key: string, expiresIn: number = 3600): Promise<string> {
+    try {
+      if (!process.env.AWS_BUCKET_NAME) {
+        throw new Error(Messages.S3_BUCKET_NOT_CONFIGURED);
+      }
+
+      const command = new GetObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: s3Key,
+      });
+
+      const signedUrl = await getSignedUrl(this._s3Client, command, { expiresIn });
+      return signedUrl;
+    } catch (error) {
+      console.error('Failed to generate signed URL:', error);
+      throw new Error(`Failed to generate signed URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async generateSignedUrlsForImages(images: IImage[]): Promise<Array<IImage & { signedUrl: string }>> {
+    const imagesWithSignedUrls = await Promise.all(
+      images.map(async (image) => {
+        try {
+          const signedUrl = await this.generateSignedUrl(image.s3Key);
+          return { ...image.toObject(), signedUrl };
+        } catch (error) {
+          console.error(`Failed to generate signed URL for image ${(image as IImage)._id}:`, error);
+          return { ...image.toObject(), signedUrl: image.imageUrl };
+        }
+      })
+    );
+    return imagesWithSignedUrls;
+  }
+
+  private async deleteFromS3(s3Key: string): Promise<void> {
+    try {
+      if (!process.env.AWS_BUCKET_NAME) {
+        throw new Error(Messages.S3_BUCKET_NOT_CONFIGURED);
+      }
+
+      const command = new DeleteObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: s3Key,
+      });
+
+      await this._s3Client.send(command);
+    } catch (error) {
+      console.error(`Failed to delete S3 object ${s3Key}:`, error);
+      throw new Error(`Failed to delete S3 object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }

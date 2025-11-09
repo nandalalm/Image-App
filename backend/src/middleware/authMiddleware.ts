@@ -7,11 +7,9 @@ interface AuthenticatedUser {
   email: string;
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: AuthenticatedUser;
   }
 }
 
@@ -25,7 +23,12 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as JwtPayload & AuthenticatedUser;
+    const accessSecret = process.env.ACCESS_TOKEN_SECRET;
+    if (!accessSecret) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: "Server configuration error" });
+      return;
+    }
+    const decoded = jwt.verify(token, accessSecret) as JwtPayload & AuthenticatedUser;
     req.user = {
       id: decoded.id,
       email: decoded.email

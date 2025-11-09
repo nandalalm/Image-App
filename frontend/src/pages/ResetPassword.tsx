@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { AuthApi } from "../services";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../hooks/useToast";
 
 const schema = z
   .object({
@@ -57,7 +57,7 @@ const ResetPassword = () => {
       });
       show("Password updated. You can now log in.", "success");
       navigate("/login");
-    } catch (err) {
+    } catch {
       show("Failed to reset password. Link may be invalid or expired.", "error");
     } finally {
       setLoading(false);

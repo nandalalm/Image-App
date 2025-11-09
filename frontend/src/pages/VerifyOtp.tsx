@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthApi } from "../services";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../hooks/useToast";
 import { useAppDispatch } from "../redux/store";
 import { setAccessToken, setUser } from "../redux/authSlice";
 

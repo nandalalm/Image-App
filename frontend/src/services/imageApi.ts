@@ -37,7 +37,7 @@ export class ImageApi {
       },
     });
 
-    return response.data.images.map((img: any) => ({
+    return response.data.images.map((img: { imageUrl: string; _id: string; title: string }) => ({
       url: img.imageUrl,
       id: img._id,
       title: img.title

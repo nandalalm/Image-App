@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, X, Loader2, Upload } from "lucide-react";
 import { ImageApi } from "../services";
 import type { ImageUploadData } from "../types/image";
-import { useToast } from "./ToastProvider";
+import { useToast } from "../hooks/useToast";
 import { imageTitleSchema } from "../validation/imageTitleSchema";
 
 interface ImageWithTitle {

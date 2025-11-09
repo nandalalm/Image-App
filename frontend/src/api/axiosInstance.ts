@@ -11,11 +11,9 @@ axiosInstance.interceptors.request.use(
   (config) => {
     const state = store.getState();
     const accessToken = state.auth.accessToken;
-    
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    
+    }  
     return config;
   },
   (error) => Promise.reject(error)
@@ -25,14 +23,11 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
     if (originalRequest.url?.includes('/auth/refresh-token')) {
       return Promise.reject(error);
     }
-
     if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
-
       try {
         const newAccessToken = await store.dispatch(refreshAccessToken()).unwrap();
 
@@ -45,7 +40,6 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-
     return Promise.reject(error);
   }
 );

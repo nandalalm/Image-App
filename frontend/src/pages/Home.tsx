@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppSelector } from "../redux/store";
 import Navbar from "../components/Navbar";
 import ImageUpload from "../components/ImageUpload";
@@ -6,7 +6,7 @@ import ImageGallery from "../components/ImageGallery";
 import { ImageApi } from "../services";
 import type { ImageItem, ImageUpdateData, ImageOrderUpdate } from "../types/image";
 import { useRef } from "react";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../hooks/useToast";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 
@@ -23,13 +23,7 @@ const Home = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (didFetchRef.current) return;
-    didFetchRef.current = true;
-    fetchImages();
-  }, []);
-
-  const fetchImages = async (page = 1, append = false) => {
+  const fetchImages = useCallback(async (page = 1, append = false) => {
     try {
       if (!append) {
         setIsLoading(true);
@@ -60,7 +54,13 @@ const Home = () => {
         setIsLoadingMore(false);
       }
     }
-  };
+  }, [show]);
+
+  useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    fetchImages();
+  }, [fetchImages]);
 
   const handleUpload = async () => {
     await fetchImages();

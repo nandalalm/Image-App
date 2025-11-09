@@ -5,7 +5,7 @@ import { loginSchema } from "../validation/loginSchema";
 import { validateForm } from "../utils/validateForm";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../hooks/useToast";
 import { AuthApi } from "../services";
 import type { LoginCredentials } from "../types/auth";
 import { z } from "zod";
@@ -121,8 +121,8 @@ const Login = () => {
               setForgotLoading(true);
               await AuthApi.forgotPassword({ email: parsed.data.email });
               show("Reset link sent to your email", "success");
-            } catch (err: any) {
-              const errorMessage = err.response?.data?.message || "Failed to send reset link";
+            } catch (err: unknown) {
+              const errorMessage = (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to send reset link";
               if (errorMessage === "Email not registered") {
                 setForgotError("Email not registered");
               } else {

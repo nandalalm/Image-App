@@ -111,11 +111,21 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       email: string;
     }
     
-    jwt.verify(token, process.env.REFRESH_TOKEN_SECRET!, (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
+    const refreshSecret = process.env.REFRESH_TOKEN_SECRET;
+    if (!refreshSecret) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: "Server configuration error" });
+    }
+    
+    jwt.verify(token, refreshSecret, (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
       if (err) return res.status(HttpStatus.FORBIDDEN).json({ message: Messages.INVALID_REFRESH_TOKEN });
 
       const payload = decoded as CustomJwtPayload;
-      const accessToken = jwt.sign({ id: payload.id, email: payload.email }, process.env.ACCESS_TOKEN_SECRET!, {
+      const accessSecret = process.env.ACCESS_TOKEN_SECRET;
+      if (!accessSecret) {
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: "Server configuration error" });
+      }
+      
+      const accessToken = jwt.sign({ id: payload.id, email: payload.email }, accessSecret, {
         expiresIn: "15m",
       });
 
@@ -163,7 +173,104 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
       return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.UNAUTHORIZED });
     }
     const profile = await userService.getProfile(userId);
+    
+    if (profile.profileImageUrl) {
+      const authHeader = req.headers.authorization;
+      const accessToken = authHeader?.split(" ")[1];
+      if (accessToken) {
+        profile.profileImageUrl = `/api/user/profile-image?token=${accessToken}`;
+      }
+    }
+    
     return res.status(HttpStatus.OK).json({ user: profile });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const serveProfileImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    let userId: string | undefined;
+    const { token } = req.query;
+
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.split(" ")[1];
+    
+    if (authToken) {
+      try {
+        const accessSecret = process.env.ACCESS_TOKEN_SECRET;
+        if (!accessSecret) throw new Error("Missing ACCESS_TOKEN_SECRET");
+        const decoded = jwt.verify(authToken, accessSecret) as JwtPayload & { id: string };
+        userId = decoded.id;
+      } catch {
+        // JWT verification failed, continue to check query token
+      }
+    }
+
+    if (!userId && token) {
+      try {
+        const accessSecret = process.env.ACCESS_TOKEN_SECRET;
+        if (!accessSecret) throw new Error("Missing ACCESS_TOKEN_SECRET");
+        const decoded = jwt.verify(token as string, accessSecret) as JwtPayload & { id: string };
+        userId = decoded.id;
+      } catch {
+        return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.UNAUTHORIZED });
+      }
+    }
+
+    if (!userId) {
+      return res.status(HttpStatus.UNAUTHORIZED).json({ message: Messages.UNAUTHORIZED });
+    }
+
+    const profile = await userService.getProfile(userId);
+    if (!profile.profileImageUrl) {
+      return res.status(HttpStatus.NOT_FOUND).json({ message: "Profile image not found" });
+    }
+
+    const urlParts = profile.profileImageUrl.split('/');
+    const s3Key = urlParts.slice(3).join('/'); 
+
+    const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+    
+    const awsRegion = process.env.AWS_REGION;
+    const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const awsBucketName = process.env.AWS_BUCKET_NAME;
+    
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey || !awsBucketName) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: "AWS configuration error" });
+    }
+
+    const s3Client = new S3Client({
+      region: awsRegion,
+      credentials: {
+        accessKeyId: awsAccessKeyId,
+        secretAccessKey: awsSecretAccessKey,
+      },
+    });
+
+    const command = new GetObjectCommand({
+      Bucket: awsBucketName,
+      Key: s3Key,
+    });
+
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+
+    const fetch = (await import('node-fetch')).default;
+    const imageResponse = await fetch(signedUrl);
+    
+    if (!imageResponse.ok) {
+      return res.status(HttpStatus.NOT_FOUND).json({ message: "Profile image not found" });
+    }
+    
+    res.set({
+      'Content-Type': imageResponse.headers.get('content-type') || 'image/jpeg',
+      'Content-Length': imageResponse.headers.get('content-length') || '',
+      'Cache-Control': 'private, max-age=300',
+    });
+   
+    imageResponse.body?.pipe(res);
   } catch (err) {
     next(err);
   }
@@ -184,6 +291,13 @@ export const updateProfilePhoto = async (req: Request, res: Response, next: Next
       originalname: file.originalname,
       mimetype: file.mimetype,
     });
+    
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.split(" ")[1];
+    if (updated.profileImageUrl && accessToken) {
+      updated.profileImageUrl = `/api/user/profile-image?token=${accessToken}`;
+    }
+    
     return res.status(HttpStatus.OK).json({ user: updated, message: Messages.PROFILE_IMAGE_UPDATED });
   } catch (err) {
     next(err);

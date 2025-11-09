@@ -8,11 +8,13 @@ export class ImageRepository extends BaseRepository<IImage> implements IImageRep
   }
 
   async findByUserId(userId: string): Promise<IImage[]> {
-    return this.model.find({ userId }).sort({ order: 1, createdAt: -1 });
+    const result = await this.model.find({ userId }).sort({ order: 1, createdAt: -1 }).exec();
+    return result as IImage[];
   }
 
   async findByUserIdPaginated(userId: string, limit: number, skip: number): Promise<IImage[]> {
-    return this.model.find({ userId }).sort({ order: 1, createdAt: -1 }).limit(limit).skip(skip);
+    const result = await this.model.find({ userId }).sort({ order: 1, createdAt: -1 }).limit(limit).skip(skip).exec();
+    return result as IImage[];
   }
 
   async countByUserId(userId: string): Promise<number> {

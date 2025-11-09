@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import { useEffect, useRef, useState } from "react";
 import { UserApi } from "../services";
 import { fetchProfile } from "../redux/authSlice";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../hooks/useToast";
 
 const Profile = () => {
   const navigate = useNavigate();

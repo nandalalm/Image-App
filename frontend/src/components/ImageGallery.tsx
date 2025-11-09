@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit, Trash2, Save, X, Loader2 } from "lucide-react";
 import ImageCard from "./ImageCard";
 import ImageModal from "./ImageModal";
@@ -26,6 +26,7 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
+  const [editFilePreview, setEditFilePreview] = useState<string | null>(null);
   const [editFileError, setEditFileError] = useState<string>("");
   const [editTitleError, setEditTitleError] = useState<string>("");
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -38,6 +39,14 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
   const [touchPos, setTouchPos] = useState<{ x: number; y: number } | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (editFilePreview) {
+        URL.revokeObjectURL(editFilePreview);
+      }
+    };
+  }, [editFilePreview]);
+
   const startEdit = (image: ImageItem) => {
     setEditingId(image.id);
     setEditTitle(image.title);
@@ -46,9 +55,13 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
   };
 
   const cancelEdit = () => {
+    if (editFilePreview) {
+      URL.revokeObjectURL(editFilePreview);
+    }
     setEditingId(null);
     setEditTitle("");
     setEditFile(null);
+    setEditFilePreview(null);
     setEditFileError("");
     setEditTitleError("");
   };
@@ -73,6 +86,9 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
       setIsEditing(true);
       try {
         await onEdit(editingId, editTitle.trim(), editFile || undefined);
+        if (editFilePreview) {
+          URL.revokeObjectURL(editFilePreview);
+        }
         cancelEdit();
       } catch (error) {
         console.error('Edit failed:', error);
@@ -86,6 +102,7 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
     const file = e.target.files?.[0] || null;
     if (!file) {
       setEditFile(null);
+      setEditFilePreview(null);
       setEditFileError("");
       setIsProcessingFile(false);
       return;
@@ -95,15 +112,22 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
     
     if (!file.type.startsWith("image/")) {
       setEditFile(null);
+      setEditFilePreview(null);
       setEditFileError("Only image files are allowed (JPG, PNG, GIF, WebP)");
       e.currentTarget.value = "";
       setIsProcessingFile(false);
       return;
     }
     
+    const previewUrl = URL.createObjectURL(file);
+    
     setTimeout(() => {
+      if (editFilePreview) {
+        URL.revokeObjectURL(editFilePreview);
+      }
       setEditFileError("");
       setEditFile(file);
+      setEditFilePreview(previewUrl);
       setIsProcessingFile(false);
     }, 300);
   };
@@ -326,10 +350,15 @@ const ImageGallery = ({ images, totalImages, onEdit, onDelete, onDeleteAll, onRe
               >
                 <div className="relative w-full h-36 sm:h-40 md:h-44 rounded-t-xl overflow-hidden">
                   <img
-                    src={image.imageUrl}
+                    src={editFilePreview || image.imageUrl}
                     alt={image.title}
                     className="w-full h-full object-cover"
                   />
+                  {editFilePreview && (
+                    <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-md">
+                      Preview
+                    </div>
+                  )}
                 </div>
               </button>
 

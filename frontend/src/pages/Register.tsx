@@ -31,6 +31,7 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = result.data as typeof formData;
+      void confirmPassword;
       await AuthApi.register(registerData as RegisterData);
       navigate("/verify-otp", { state: { email: registerData.email } });
     } catch (err: unknown) {

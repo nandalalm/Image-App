@@ -8,7 +8,9 @@ import {
   updateImage,
   deleteImage,
   deleteAllImages,
-  reorderImages
+  reorderImages,
+  serveImage,
+  getSignedUrl
 } from "../controllers/imageController";
 
 const upload = multer({
@@ -30,6 +32,8 @@ const router = Router();
 router.post("/upload-files", authMiddleware, upload.array('images'), uploadImages);
 router.post("/create-from-urls", authMiddleware, createImages);
 router.get("/my-images", authMiddleware, getUserImages);
+router.get("/serve/:imageId", serveImage);
+router.get("/signed-url/:imageId", authMiddleware, getSignedUrl);
 router.put("/update/:imageId", authMiddleware, upload.single('image'), updateImage);
 router.delete("/delete/:imageId", authMiddleware, deleteImage);
 router.delete("/delete-all", authMiddleware, deleteAllImages);

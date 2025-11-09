@@ -18,11 +18,19 @@ export class UserService implements IUserService {
 
   constructor(userRepository: IUserRepository) {
     this._userRepository = userRepository;
+    const awsRegion = process.env.AWS_REGION;
+    const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+      throw new Error("AWS configuration environment variables are missing");
+    }
+
     this._s3Client = new S3Client({
-      region: process.env.AWS_REGION,
+      region: awsRegion,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: awsAccessKeyId,
+        secretAccessKey: awsSecretAccessKey,
       },
     });
   }

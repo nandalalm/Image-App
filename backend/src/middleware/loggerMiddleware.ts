@@ -25,7 +25,7 @@ const errorLogStream = fs.createWriteStream(errorLogPath, { flags: "a" });
 
 const fileLogger = morgan(format, { skip, stream: accessLogStream });
 
-export const logError = (error: Error, req?: Request, additionalInfo?: any) => {
+export const logError = (error: Error, req?: Request, additionalInfo?: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
   const errorLog = {
     timestamp,
@@ -42,7 +42,7 @@ export const logError = (error: Error, req?: Request, additionalInfo?: any) => {
   errorLogStream.write(JSON.stringify(errorLog) + "\n");
 };
 
-export const logInfo = (message: string, additionalInfo?: any) => {
+export const logInfo = (message: string, additionalInfo?: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
   const infoLog = {
     timestamp,
@@ -54,7 +54,7 @@ export const logInfo = (message: string, additionalInfo?: any) => {
   errorLogStream.write(JSON.stringify(infoLog) + "\n");
 };
 
-export const logWarning = (message: string, additionalInfo?: any) => {
+export const logWarning = (message: string, additionalInfo?: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
   const warningLog = {
     timestamp,

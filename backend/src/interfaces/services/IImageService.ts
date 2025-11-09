@@ -25,4 +25,6 @@ export interface IImageService {
   deleteImage(userId: string, imageId: string): Promise<boolean>;
   deleteAllImages(userId: string): Promise<number>;
   reorderImages(userId: string, imageOrders: { id: string; order: number }[]): Promise<void>;
+  generateSignedUrl(s3Key: string, expiresIn?: number): Promise<string>;
+  generateSignedUrlsForImages(images: IImage[]): Promise<Array<IImage & { signedUrl: string }>>;
 }
