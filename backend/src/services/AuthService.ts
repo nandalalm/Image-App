@@ -50,7 +50,7 @@ export class UserService implements IUserService {
     await setOTP(`tempUser:${userData.email}`, JSON.stringify(tempUserData), 900);
 
     const otp = generateOTP();
-    await setOTP(`otp:${userData.email}`, otp, 300); 
+    await setOTP(`otp:${userData.email}`, otp, 60); 
     await sendOTPEmail(userData.email, otp);
 
     return userData;
@@ -102,7 +102,7 @@ export class UserService implements IUserService {
     if (!tempUserDataStr) throw new Error(Messages.REGISTRATION_SESSION_EXPIRED);
 
     const otp = generateOTP();
-    await setOTP(`otp:${email}`, otp, 300);
+    await setOTP(`otp:${email}`, otp, 60);
     await sendOTPEmail(email, otp);
   }
 

@@ -27,6 +27,11 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
     if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+      // Only attempt refresh if this was an authenticated request
+      const authHeader = originalRequest.headers?.Authorization || originalRequest.headers?.authorization;
+      if (!authHeader) {
+        return Promise.reject(error);
+      }
       originalRequest._retry = true;
       try {
         const newAccessToken = await store.dispatch(refreshAccessToken()).unwrap();

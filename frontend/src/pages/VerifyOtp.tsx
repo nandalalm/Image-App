@@ -15,7 +15,7 @@ export default function VerifyOtp() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   
@@ -97,7 +97,12 @@ export default function VerifyOtp() {
       navigate("/home");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || "OTP verification failed");
+      const message = error.response?.data?.message || "OTP verification failed";
+      setError(message);
+      if (message.includes("Registration session expired")) {
+        show("Registration session expired. Please register again.", "error");
+        navigate("/register");
+      }
     } finally {
       setLoading(false);
     }
@@ -109,13 +114,18 @@ export default function VerifyOtp() {
     
     try {
       await AuthApi.resendOtp(email);
-      setTimeLeft(30);
+      setTimeLeft(60);
       setCanResend(false);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || "Failed to resend OTP");
+      const message = error.response?.data?.message || "Failed to resend OTP";
+      setError(message);
+      if (message.includes("Registration session expired")) {
+        show("Registration session expired. Please register again.", "error");
+        navigate("/register");
+      }
     } finally {
       setResendLoading(false);
     }

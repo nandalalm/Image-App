@@ -127,7 +127,7 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
           </div>
           
           <div class="expiry-notice">
-            <p>This code will expire in 5 minutes</p>
+            <p>This code will expire in 1 minute</p>
           </div>
         </div>
         
@@ -144,7 +144,7 @@ export const sendOTPEmail = async (to: string, otp: string): Promise<void> => {
     to,
     subject: "Your Verification Code - Image App",
     html: htmlTemplate,
-    text: `Your verification code is ${otp}. It expires in 5 minutes.
+    text: `Your verification code is ${otp}. It expires in 1 minute.
 
     © ${new Date().getFullYear()} Image App. All rights reserved.`
   });

@@ -66,6 +66,11 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
       user
     });
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === Messages.OTP_INVALID || err.message === Messages.REGISTRATION_SESSION_EXPIRED) {
+        return res.status(HttpStatus.BAD_REQUEST).json({ message: err.message });
+      }
+    }
     next(err);
   }
 };
@@ -78,6 +83,11 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
     await userService.resendOTP(email);
     res.status(HttpStatus.OK).json({ message: Messages.OTP_SEND_SUCCESS });
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === Messages.REGISTRATION_SESSION_EXPIRED) {
+        return res.status(HttpStatus.BAD_REQUEST).json({ message: err.message });
+      }
+    }
     next(err);
   }
 };
@@ -97,6 +107,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     res.status(HttpStatus.OK).json({ accessToken });
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === Messages.INVALID_CREDENTIALS) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({ message: err.message });
+      }
+    }
     next(err);
   }
 };
