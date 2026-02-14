@@ -30,17 +30,17 @@ const Home = () => {
       } else {
         setIsLoadingMore(true);
       }
-      
-      const result = await ImageApi.getUserImages({ page, limit: 6 });
+
+      const result = await ImageApi.getUserImages({ page, limit: 8 });
       const newImages = result.data;
       const pagination = result.pagination;
-      
+
       if (append) {
         setImages(prev => [...prev, ...newImages]);
       } else {
         setImages(newImages);
       }
-      
+
       setHasMore(pagination?.hasMore || false);
       setTotalImages(pagination?.totalImages || 0);
       setCurrentPage(page);
@@ -73,9 +73,22 @@ const Home = () => {
   const handleEdit = async (id: string, title: string, file?: File) => {
     try {
       const updateData: ImageUpdateData = { title, file };
-      await ImageApi.updateImage(id, updateData);
+      const updatedImage = await ImageApi.updateImage(id, updateData);
 
-      await fetchImages();
+      setImages(prev => prev.map(img => {
+        if (img.id !== id) return img;
+
+        if (file) {
+          return { ...updatedImage, imageUrl: `${updatedImage.imageUrl}&v=${Date.now()}` };
+        } else {
+          const currentUrl = img.imageUrl;
+          const hasVersion = currentUrl.includes('&v=');
+          return {
+            ...updatedImage,
+            imageUrl: hasVersion ? currentUrl : updatedImage.imageUrl
+          };
+        }
+      }));
       show("Image updated", "success");
     } catch (error) {
       console.error("Edit failed:", error);
@@ -107,7 +120,7 @@ const Home = () => {
 
   const handleDeleteAll = () => {
     if (totalImages === 0) return;
-    
+
     setPendingDeleteId('DELETE_ALL');
     setConfirmOpen(true);
   };
@@ -123,7 +136,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50">
       <Navbar />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-gradient-to-r from-indigo-600 to-fuchsia-600 rounded-2xl shadow-lg p-8 mb-8 text-white">
           <h1 className="text-3xl font-bold mb-2">
@@ -178,7 +191,7 @@ const Home = () => {
         open={confirmOpen}
         title={pendingDeleteId === 'DELETE_ALL' ? "Delete all images?" : "Delete image?"}
         description={
-          pendingDeleteId === 'DELETE_ALL' 
+          pendingDeleteId === 'DELETE_ALL'
             ? `This will permanently delete all ${totalImages} images from your account. This action cannot be undone.`
             : "This action cannot be undone."
         }
@@ -197,15 +210,16 @@ const Home = () => {
               show(`All ${deletedCount} images deleted successfully`, "success");
             } else {
               await ImageApi.deleteImage(pendingDeleteId);
-              await fetchImages();
+              setImages(prev => prev.filter(img => img.id !== pendingDeleteId));
+              setTotalImages(prev => prev - 1);
               show("Image deleted", "success");
             }
           } catch (err) {
             console.error("Delete failed:", err);
             show(
-              pendingDeleteId === 'DELETE_ALL' 
-                ? "Failed to delete all images" 
-                : "Failed to delete image", 
+              pendingDeleteId === 'DELETE_ALL'
+                ? "Failed to delete all images"
+                : "Failed to delete image",
               "error"
             );
           } finally {

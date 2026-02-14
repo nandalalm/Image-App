@@ -10,11 +10,11 @@ import type {
 import type { PaginationParams, PaginatedResponse } from "../types/api";
 
 export class ImageApi {
- 
+
   static async getUserImages(params: PaginationParams = {}): Promise<PaginatedResponse<ImageItem>> {
-    const { page = 1, limit = 6 } = params;
+    const { page = 1, limit = 8 } = params;
     const response = await axiosInstance.get(`/images/my-images?page=${page}&limit=${limit}`);
-    
+
     return {
       data: response.data.images || [],
       pagination: response.data.pagination
@@ -23,11 +23,11 @@ export class ImageApi {
 
   static async uploadImages(files: ImageUploadData[]): Promise<UploadResult[]> {
     const formData = new FormData();
-    
+
     files.forEach(({ file }) => {
       formData.append('images', file);
     });
-    
+
     const titles = files.map(({ title }) => title);
     formData.append('titles', JSON.stringify(titles));
 
@@ -55,10 +55,10 @@ export class ImageApi {
           'Content-Type': 'multipart/form-data',
         },
       });
-      return response.data;
+      return response.data.image;
     } else {
       const response = await axiosInstance.put(`/images/update/${id}`, { title: data.title });
-      return response.data;
+      return response.data.image;
     }
   }
 
